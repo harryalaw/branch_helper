@@ -3,7 +3,7 @@
 # Function to search for branches matching the keyword (case-insensitive)
 search_branches() {
   local keyword="$1"
-  git branch | awk -v keyword="$keyword" 'BEGIN{IGNORECASE=1} /^[^*]/ && $0 ~ keyword {print $1}'
+  git branch | awk -v keyword="$keyword" 'BEGIN{IGNORECASE=1} /^[^*]/ && tolower($0) ~ tolower(keyword) {print $1}'
 }
 
 # Function to print branch list
@@ -28,9 +28,25 @@ switch_branch() {
     git checkout "$branch"
     echo "Switched to branch '$branch'."
   else
-    echo "Invalid branch number. Exiting..."
-    exit 1
+    echo "Invalid branch number. Please try again."
+    prompt_for_branch_selection
   fi
+}
+
+# Function to prompt for branch selection
+prompt_for_branch_selection() {
+  print_branches "${branches[@]}"
+  
+  while true; do
+    read choice
+    
+    if [[ $choice =~ ^[0-9]+$ && $choice -le $branch_count ]]; then
+      switch_branch "$choice"
+      break
+    else
+      echo "Invalid choice. Please enter a valid number:"
+    fi
+  done
 }
 
 keyword="$1"
@@ -61,17 +77,6 @@ else
     done
   fi
   
-  print_branches "${branches[@]}"
-  
-  while true; do
-    read choice
-    
-    if [[ $choice =~ ^[0-9]+$ && $choice -le $branch_count ]]; then
-      switch_branch "$choice"
-      break
-    else
-      echo "Invalid choice. Please enter a valid number:"
-    fi
-  done
+  prompt_for_branch_selection
 fi
 
