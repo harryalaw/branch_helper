@@ -17,7 +17,7 @@ print_branches() {
     echo "[$((i+1))] ${branches[i]}"
   done
   
-  echo "Please enter the number corresponding to the branch you want to switch to:"
+  echo "Please enter the number corresponding to the branch you want to switch to (1-$count), or press Enter for more results:"
 }
 
 # Function to switch branches
@@ -35,16 +35,34 @@ switch_branch() {
 
 # Function to prompt for branch selection
 prompt_for_branch_selection() {
-  print_branches "${branches[@]}"
+  local current_page="$1"
+  local branches_to_display=("${@:2}")
+  local branches_count=${#branches_to_display[@]}
+  
+  echo "Page: $current_page"
+  print_branches "${branches_to_display[@]}"
   
   while true; do
     read choice
     
-    if [[ $choice =~ ^[0-9]+$ && $choice -le $branch_count ]]; then
+    if [[ -z "$choice" ]]; then
+      next_page=$((current_page + 1))
+      start_index=$((next_page * 10))
+      end_index=$((start_index + 9))
+      
+      if [[ $end_index -lt $branches_count ]]; then
+        branches_to_display=("${branches[@]:start_index:end_index}")
+        prompt_for_branch_selection "$next_page" "${branches_to_display[@]}"
+        break
+      else
+        echo "No more branches to display."
+        exit 0
+      fi
+    elif [[ $choice =~ ^[0-9]+$ && $choice -ge 1 && $choice -le $branches_count ]]; then
       switch_branch "$choice"
       break
     else
-      echo "Invalid choice. Please enter a valid number:"
+      echo "Invalid choice. Please enter a valid number (1-$branches_count), or press Enter for more results:"
     fi
   done
 }
@@ -63,20 +81,11 @@ elif [[ $branch_count -eq 1 ]]; then
   switch_branch 1
 else
   # Check number of matches for user interaction
-  if [[ $branch_count -gt 5 ]]; then
-    while true; do
-      echo "Too many matches found. Please enter a different keyword:"
-      read keyword
-      
-      branches=($(search_branches "$keyword"))
-      branch_count=${#branches[@]}
-      
-      if [[ $branch_count -lt 6 ]]; then
-        break
-      fi
-    done
+  if [[ $branch_count -gt 10 ]]; then
+    branches_to_display=("${branches[@]:0:10}")
+    prompt_for_branch_selection 1 "${branches_to_display[@]}"
+  else
+    prompt_for_branch_selection 1 "${branches[@]}"
   fi
-  
-  prompt_for_branch_selection
 fi
 
