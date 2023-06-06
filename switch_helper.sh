@@ -8,22 +8,33 @@ search_branches() {
 
 # Function to print branch list
 print_branches() {
-  local branches=("$@")
-  local count=${#branches[@]}
-  
-  echo "Found $count branches matching '$keyword':"
-  
-  for ((i=0; i<count; i++)); do
-    echo "[$((i+1))] ${branches[i]}"
+  local start_index=("$1")
+  local end_index=$((start_index+10));
+  local branches=("${@:2}")
+  local branches_count=${#branches[@]}
+
+  echo "Found $branches_count branches matching '$keyword':"
+  echo ""
+
+  if [[ $branches_count -lt $end_index ]]; then
+      echo "Branches count: $branches_count"
+      echo "end_index: $end_index"
+      end_index=$branches_count
+  fi
+
+  for ((i=start_index; i<end_index; i++)); do
+      echo "[$((i+1))] ${branches[i]}"
   done
-  
-  echo "Please enter the number corresponding to the branch you want to switch to (1-$count), or press Enter for more results:"
+
+  echo ""
+  echo "Enter the number corresponding to the branch you want to switch to (1-$((branches_count)))"
+  echo "or press Enter for more results:"
 }
 
 # Function to switch branches
 switch_branch() {
-  local branch="${branches[$1-1]}"
-  
+    local branch="${branches[$(($1-1))]}"
+
   if [[ -n "$branch" ]]; then
     git checkout "$branch"
     echo "Switched to branch '$branch'."
@@ -38,21 +49,25 @@ prompt_for_branch_selection() {
   local current_page="$1"
   local branches_to_display=("${@:2}")
   local branches_count=${#branches_to_display[@]}
-  
-  echo "Page: $current_page"
-  print_branches "${branches_to_display[@]}"
-  
+
+  echo "Page: $(($current_page+1))"
+  print_branches $((current_page*10)) "${branches_to_display[@]}"
+
   while true; do
     read choice
-    
+
     if [[ -z "$choice" ]]; then
-      next_page=$((current_page + 1))
       start_index=$((next_page * 10))
+      next_page=$((current_page + 1))
       end_index=$((start_index + 9))
-      
-      if [[ $end_index -lt $branches_count ]]; then
-        branches_to_display=("${branches[@]:start_index:end_index}")
-        prompt_for_branch_selection "$next_page" "${branches_to_display[@]}"
+
+      if [[ $start_index -lt $branches_count ]]; then
+        if [[ $end_index -ge $branches_count ]]; then
+          end_index=$((branches_count - 1))
+          next_page=0
+        fi
+
+        prompt_for_branch_selection $next_page "${branches_to_display[@]}"
         break
       else
         echo "No more branches to display."
@@ -62,7 +77,8 @@ prompt_for_branch_selection() {
       switch_branch "$choice"
       break
     else
-      echo "Invalid choice. Please enter a valid number (1-$branches_count), or press Enter for more results:"
+      echo "Invalid choice."
+      echo "Please enter a valid number (1-$branches_count), or press Enter for more results:"
     fi
   done
 }
@@ -81,11 +97,6 @@ elif [[ $branch_count -eq 1 ]]; then
   switch_branch 1
 else
   # Check number of matches for user interaction
-  if [[ $branch_count -gt 10 ]]; then
-    branches_to_display=("${branches[@]:0:10}")
-    prompt_for_branch_selection 1 "${branches_to_display[@]}"
-  else
-    prompt_for_branch_selection 1 "${branches[@]}"
-  fi
+  prompt_for_branch_selection 0 "${branches[@]}"
 fi
 
