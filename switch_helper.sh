@@ -50,6 +50,8 @@ prompt_for_branch_selection() {
   local branches_to_display=("${@:2}")
   local branches_count=${#branches_to_display[@]}
 
+  echo -e "\033[1J"  # Clear the screen
+
   echo "Page: $(($current_page+1))"
   print_branches $((current_page*10)) "${branches_to_display[@]}"
 
