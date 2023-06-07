@@ -5,10 +5,11 @@ search_branches() {
     local keyword="$1"
     local local_branches=$(git branch | awk -v keyword="$keyword" 'BEGIN{IGNORECASE=1} /^[^*]/ && tolower($0) ~ tolower(keyword) {print $1}')
     local remote_branches=$(git branch -r | awk -v keyword="$keyword" 'BEGIN{IGNORECASE=1} /^[^*]/ && tolower($0) ~ tolower(keyword) {print $1}')
-    remote_branches="$remote_branches" | sed 's/^[[:space:]]*origin\///'
+    remote_branches=$(echo "$remote_branches" | sed 's/^[[:space:]]*origin\///')
 
-    echo "$local_branches"
-    echo "$remote_branches"
+    local branches=$(echo "$local_branches"$'\n'"$remote_branches" | sort -fu)
+
+    echo "$branches"
 }
 
 # Function to print branch list
@@ -26,7 +27,7 @@ print_branches() {
     fi
 
     for ((i=start_index; i<end_index; i++)); do
-        echo "[$((i+1))] ${branches[i]}"
+        echo "[$((i+1))] '${branches[i]}'"
     done
 
     echo ""
@@ -65,8 +66,9 @@ prompt_for_branch_selection() {
 
         if [[ -z "$choice" ]]; then
             start_index=$((next_page * 10))
-            next_page=$((current_page + 1))
             end_index=$((start_index + 9))
+
+            next_page=$((current_page + 1))
 
             if [[ $start_index -lt $branches_count ]]; then
                 if [[ $end_index -ge $branches_count ]]; then
